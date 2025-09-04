@@ -30,6 +30,41 @@
 
         /* Make canvas visually larger/responsive */
         #signature-canvas { width: 100%; height: 200px; touch-action: none; }
+
+        /* Animations */
+        @keyframes cardPop {
+            from { opacity: 0; transform: translateY(8px) scale(.99); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .card-animate { animation: cardPop .36s ease both; }
+
+        @keyframes previewPulse {
+            0% { opacity: 0; transform: translateY(8px); }
+            60% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .preview-update { animation: previewPulse .36s ease both; }
+
+        /* Button micro-interactions */
+        .btn-animated { transition: transform .12s ease, box-shadow .12s ease; }
+        .btn-animated:active { transform: translateY(1px) scale(.998); }
+
+        /* Signature line for text signatures */
+        .signature-line {
+            display: inline-block;
+            border-bottom: 2px solid #111;
+            padding-bottom: 6px;
+            min-width: 220px;
+            max-width: 320px;
+            line-height: 1;
+        }
+
+        /* Subtle hover glow for preview */
+        #surat-container { transition: box-shadow .2s ease; }
+        #surat-container:hover { box-shadow: 0 8px 30px rgba(2,6,23,0.08); }
+
+        /* Small visual polish */
+        .template-card:hover { transform: translateY(-6px); box-shadow: 0 10px 30px rgba(2,6,23,0.06); transition: all .2s ease; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 transition-colors duration-500">
@@ -130,8 +165,8 @@
                             <label id="label-signature" class="block text-sm font-medium text-gray-700">Tandatangan</label>
 
                             <div class="flex gap-2 mt-2">
-                                <button type="button" id="btn-teks-sign" class="px-3 py-2 rounded-md bg-sky-600 text-white text-sm">Teks</button>
-                                <button type="button" id="btn-lukis-sign" class="px-3 py-2 rounded-md bg-gray-200 text-sm">Lukis</button>
+                                <button type="button" id="btn-teks-sign" class="px-3 py-2 rounded-md bg-sky-600 text-white text-sm btn-animated">Teks</button>
+                                <button type="button" id="btn-lukis-sign" class="px-3 py-2 rounded-md bg-gray-200 text-sm btn-animated">Lukis</button>
                             </div>
 
                             <div id="teks-sign-content" class="mt-3">
@@ -142,8 +177,8 @@
                             <div id="lukis-sign-content" class="mt-3 hidden">
                                 <canvas id="signature-canvas" class="border border-gray-300 rounded-lg"></canvas>
                                 <div class="flex gap-2 mt-2">
-                                    <button type="button" id="clear-canvas-btn" class="px-3 py-2 bg-red-100 text-red-700 rounded-md text-sm">Padam Lukisan</button>
-                                    <button type="button" id="export-canvas-btn" class="px-3 py-2 bg-sky-100 text-sky-700 rounded-md text-sm">Gunakan Lukisan</button>
+                                    <button type="button" id="clear-canvas-btn" class="px-3 py-2 bg-red-100 text-red-700 rounded-md text-sm btn-animated">Padam Lukisan</button>
+                                    <button type="button" id="export-canvas-btn" class="px-3 py-2 bg-sky-100 text-sky-700 rounded-md text-sm btn-animated">Gunakan Lukisan</button>
                                 </div>
                             </div>
                         </div>
@@ -151,9 +186,9 @@
                     </div>
 
                     <div class="mt-6 flex flex-col sm:flex-row gap-3">
-                        <button type="button" id="btn-jana" class="w-full sm:w-auto flex-1 inline-flex justify-center items-center px-6 py-3 border border-transparent rounded-xl text-white bg-sky-600 hover:bg-sky-700">Jana Surat</button>
-                        <button type="button" id="btn-cetak" class="w-full sm:w-auto flex-1 inline-flex justify-center items-center px-6 py-3 border border-gray-300 rounded-xl bg-white">Cetak</button>
-                        <button type="reset" id="btn-reset" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-gray-300 rounded-xl bg-white">Reset</button>
+                        <button type="button" id="btn-jana" class="w-full sm:w-auto flex-1 inline-flex justify-center items-center px-6 py-3 border border-transparent rounded-xl text-white bg-sky-600 hover:bg-sky-700 btn-animated">Jana Surat</button>
+                        <button type="button" id="btn-cetak" class="w-full sm:w-auto flex-1 inline-flex justify-center items-center px-6 py-3 border border-gray-300 rounded-xl bg-white btn-animated">Cetak</button>
+                        <button type="reset" id="btn-reset" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-gray-300 rounded-xl bg-white btn-animated">Reset</button>
                     </div>
                 </form>
             </div>
@@ -166,13 +201,13 @@
         </main>
 
         <footer class="text-center mt-12 text-sm text-gray-500">
-            <p>Dibuat semula untuk memenuhi keperluan anda.</p>
+            <p>Dibuat oleh <a href="https://github.com/BlankedWave/">BlankedWave</a>.</p>
         </footer>
     </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    // templates + translations (both MS and EN). EN templates mirror MS structure.
+    // templates + translations
     const translations = {
         ms: {
             siteTitle: 'Generator Surat',
@@ -396,7 +431,9 @@ Thank you for your cooperation.`
         const list = translations[currentLang].templates;
         list.forEach((tmp, idx) => {
             const card = document.createElement('div');
-            card.className = 'border border-gray-200 p-4 rounded-xl hover:shadow-lg cursor-pointer bg-white';
+            card.className = 'template-card border border-gray-200 p-4 rounded-xl cursor-pointer bg-white card-animate';
+            // stagger animation slightly
+            card.style.animationDelay = `${idx * 70}ms`;
             card.innerHTML = `<h3 class="font-bold text-md text-sky-700">${tmp.title}</h3>
                               <p class="text-sm text-gray-500 mt-1">${tmp.description}</p>`;
             card.addEventListener('click', () => {
@@ -492,7 +529,7 @@ Thank you for your cooperation.`
         if (clean.includes('nama') && (clean.includes('guru') || clean.includes('penerima') || clean.includes('sekolah') )) return namaPenerima.value || '';
         if (clean.includes('alamat') && (clean.includes('sekolah') || clean.includes('penerima') || clean.includes('syarikat') )) return alamatPenerima.value || '';
 
-        // IMPORTANT: [TARIKH] in the body uses template-specific date (absence/resign)
+        // [TARIKH] in body uses template-specific date (absence/resign)
         if (clean === 'tarikh' || clean === 'date') {
             return computeBodyDateText();
         }
@@ -665,16 +702,20 @@ Thank you for your cooperation.`
         if (signatureMode === 'teks') {
             const sigText = tandatanganTeks.value.trim();
             signatureBlock += `<p>${t.officialClosing}</p>`;
+
+            // interactive signature line: always show a line; if text present show styled script above the line
             if (sigText) {
-                signatureBlock += `<p class="signature-font" style="font-size:36px;margin-top:6px">${escapeHtml(sigText)}</p>`;
+                signatureBlock += `<div class="signature-line"><span class="signature-font" style="font-size:30px">${escapeHtml(sigText)}</span></div>`;
             } else {
-                signatureBlock += `<div style="height:56px;"></div>`;
+                // empty line placeholder (show just the line)
+                signatureBlock += `<div class="signature-line">&nbsp;</div>`;
             }
+
             signatureBlock += `<p style="margin-top:12px;">(${escapeHtml(dataNama)})</p>`;
         } else {
             signatureBlock += `<p>${t.officialClosing}</p>`;
             if (signatureImage) {
-                signatureBlock += `<img src="${signatureImage}" alt="Tandatangan" style="width:180px;height:auto;margin-top:6px"/><br>`;
+                signatureBlock += `<img src="${signatureImage}" alt="Tandatangan" style="width:220px;height:auto;margin-top:6px;display:block"/><br>`;
             } else {
                 signatureBlock += `<div style="height:56px;"></div>`;
             }
@@ -698,11 +739,16 @@ Thank you for your cooperation.`
 
         const subjectText = tajukInput.value ? tajukInput.value.toUpperCase() : (currentTemplate ? (currentTemplate.subject || '') : '');
 
+        // trigger preview animation: remove then add class (reflow trick)
+        previewArea.classList.remove('preview-update');
+        void previewArea.offsetWidth;
+
         const html = `
             <div style="font-family: 'Inter', Arial, sans-serif; color: #111;">
                 ${headerHtml || fallbackHeader}
                 ${greetingHtml}
-                <p><strong>${(t.subjectLabel || 'SUBJECT').toUpperCase()}: ${escapeHtml(subjectText)}</strong></p>
+                <!-- show only the subject text (no 'Subject:' label) -->
+                <p><strong>${escapeHtml(subjectText)}</strong></p>
                 <br>
                 <p>${bodyHtml}</p>
                 <br>
@@ -710,6 +756,7 @@ Thank you for your cooperation.`
             </div>
         `;
         previewArea.innerHTML = html;
+        previewArea.classList.add('preview-update');
     }
 
     /* ---------- Bindings / realtime ---------- */
