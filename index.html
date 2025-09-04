@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Generator Surat Rasmi</title>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Fonts: Inter + Sacramento (signature) + Great Vibes fallback -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Great+Vibes&family=Sacramento&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        .signature-font { font-family: 'Sacramento', 'Great Vibes', cursive; }
+        .prose-custom h1, .prose-custom h2, .prose-custom h3 { color: inherit !important; }
+        .prose-custom hr { border-color: #374151 !important; }
+
+        /* Printing */
+        @media print {
+            body { background-color: white !important; color: black !important; }
+            body * { visibility: hidden; }
+            #surat-container, #surat-container * { visibility: visible; }
+            #surat-container { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; padding: 10px; box-shadow: none; border: none; }
+            #form-section, #template-section, #header-controls { display: none; }
+        }
+
+        /* Make canvas visually larger/responsive */
+        #signature-canvas { width: 100%; height: 200px; touch-action: none; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 transition-colors duration-500">
+    <div class="container mx-auto p-4 sm:p-6 md:p-8">
+        <header class="text-center mb-8 flex flex-col sm:flex-row justify-between items-center">
+            <div>
+                <h1 id="site-title" class="text-3xl md:text-4xl font-bold text-sky-700">Generator Surat</h1>
+                <p id="tagline" class="text-gray-500 mt-1">Hasilkan surat rasmi dengan mudah.</p>
+            </div>
+            <div id="header-controls" class="flex gap-2 mt-4 sm:mt-0">
+                <button id="lang-toggle" class="p-2 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300 transition-colors duration-200" aria-label="Toggle language">
+                    <span id="current-lang">MS</span>
+                </button>
+            </div>
+        </header>
+
+        <section id="template-section" class="mb-6 bg-white p-6 rounded-xl shadow-md transition-shadow duration-500">
+            <div class="flex justify-between items-center">
+                <h2 id="template-heading" class="text-xl font-bold text-gray-800">Pilih Templat Surat Rasmi</h2>
+                <small id="templates-help" class="text-sm text-gray-500">Klik templat untuk muatkan isi.</small>
+            </div>
+            <div id="template-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4"></div>
+        </section>
+
+        <main class="grid lg:grid-cols-2 gap-8">
+            <div id="form-section" class="bg-white p-6 rounded-xl shadow-lg transition-shadow duration-500">
+                <form id="surat-form" autocomplete="off">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Basic sender fields -->
+                        <div class="md:col-span-2">
+                            <label for="nama-pengirim" class="block text-sm font-medium text-gray-700">Nama Penuh Anda</label>
+                            <input type="text" id="nama-pengirim" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm" placeholder="Contoh: Ahmad bin Abu">
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label for="alamat-pengirim" class="block text-sm font-medium text-gray-700">Alamat Anda (baris alamat)</label>
+                            <textarea id="alamat-pengirim" rows="2" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm" placeholder="Baris 1&#10;Baris 2"></textarea>
+                        </div>
+
+                        <!-- Recipient -->
+                        <div class="md:col-span-2">
+                            <label for="nama-penerima" class="block text-sm font-medium text-gray-700">Nama Penerima (Guru / Penerima)</label>
+                            <input type="text" id="nama-penerima" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm" placeholder="Contoh: Cikgu A / Encik B">
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label for="alamat-penerima" class="block text-sm font-medium text-gray-700">Alamat Penerima (Sekolah / Syarikat)</label>
+                            <textarea id="alamat-penerima" rows="2" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm" placeholder="Baris 1&#10;Baris 2"></textarea>
+                        </div>
+
+                        <!-- Date controls -->
+                        <div>
+                            <label for="tarikh" class="block text-sm font-medium text-gray-700">Tarikh Surat (header)</label>
+                            <input type="date" id="tarikh" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm">
+                        </div>
+
+                        <div>
+                            <label for="tajuk" class="block text-sm font-medium text-gray-700">Tajuk / Perkara</label>
+                            <input type="text" id="tajuk" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm" placeholder="Contoh: NOTIS PERLETAKAN JAWATAN">
+                        </div>
+
+                        <!-- Template-specific date controls (hidden unless relevant) -->
+                        <div id="absence-date-controls" class="md:col-span-2 hidden">
+                            <label class="block text-sm font-medium text-gray-700">Tarikh Kehadiran / Julat (digunakan dalam isi surat)</label>
+                            <div class="flex gap-2 items-center mt-2">
+                                <label class="inline-flex items-center"><input type="radio" name="absence-date-mode" value="single" checked> <span class="ml-2">Tarikh Tunggal</span></label>
+                                <label class="inline-flex items-center ml-4"><input type="radio" name="absence-date-mode" value="range"> <span class="ml-2">Julat Tarikh</span></label>
+                            </div>
+                            <div id="absence-single" class="mt-2">
+                                <input type="date" id="tarikh-absence-single" class="block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm">
+                            </div>
+                            <div id="absence-range" class="mt-2 hidden grid grid-cols-2 gap-2">
+                                <input type="date" id="tarikh-absence-start" class="block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm">
+                                <input type="date" id="tarikh-absence-end" class="block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm">
+                            </div>
+                        </div>
+
+                        <div id="resign-date-controls" class="md:col-span-2 hidden">
+                            <label class="block text-sm font-medium text-gray-700">Tarikh Akhir Bertugas (digunakan dalam isi surat)</label>
+                            <input type="date" id="tarikh-akhir-resign" class="mt-2 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm">
+                        </div>
+
+                        <!-- Body -->
+                        <div class="md:col-span-2">
+                            <label for="isi-surat" class="block text-sm font-medium text-gray-700">Isi Kandungan Surat</label>
+                            <textarea id="isi-surat" rows="8" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm" placeholder="Isi surat akan dimuatkan dari templat; anda boleh ubah suai..."></textarea>
+                            <p class="text-xs text-gray-400 mt-1">Gunakan placeholder seperti <code>[NAMA PENGIRIM]</code>, <code>[NAMA SEKOLAH]</code>, <code>[JAWATAN PEKERJA]</code>, <code>[TARIKH]</code>, dsb.</p>
+                        </div>
+
+                        <!-- Placeholder inputs generated here -->
+                        <div id="placeholders-area" class="md:col-span-2 mt-2 hidden">
+                            <h3 class="text-sm font-medium text-gray-700 mb-2">Isi Placeholder</h3>
+                            <div id="placeholders-list" class="grid grid-cols-1 gap-2"></div>
+                        </div>
+
+                        <!-- Signature -->
+                        <div class="md:col-span-2">
+                            <label id="label-signature" class="block text-sm font-medium text-gray-700">Tandatangan</label>
+
+                            <div class="flex gap-2 mt-2">
+                                <button type="button" id="btn-teks-sign" class="px-3 py-2 rounded-md bg-sky-600 text-white text-sm">Teks</button>
+                                <button type="button" id="btn-lukis-sign" class="px-3 py-2 rounded-md bg-gray-200 text-sm">Lukis</button>
+                            </div>
+
+                            <div id="teks-sign-content" class="mt-3">
+                                <input type="text" id="tandatangan-teks" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-lg" placeholder="Masukkan tandatangan (contoh: Yang benar / Nama)">
+                                <p class="text-xs text-gray-400 mt-1">Teks ini akan dipaparkan menggunakan gaya tandatangan pada pratonton.</p>
+                            </div>
+
+                            <div id="lukis-sign-content" class="mt-3 hidden">
+                                <canvas id="signature-canvas" class="border border-gray-300 rounded-lg"></canvas>
+                                <div class="flex gap-2 mt-2">
+                                    <button type="button" id="clear-canvas-btn" class="px-3 py-2 bg-red-100 text-red-700 rounded-md text-sm">Padam Lukisan</button>
+                                    <button type="button" id="export-canvas-btn" class="px-3 py-2 bg-sky-100 text-sky-700 rounded-md text-sm">Gunakan Lukisan</button>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                        <button type="button" id="btn-jana" class="w-full sm:w-auto flex-1 inline-flex justify-center items-center px-6 py-3 border border-transparent rounded-xl text-white bg-sky-600 hover:bg-sky-700">Jana Surat</button>
+                        <button type="button" id="btn-cetak" class="w-full sm:w-auto flex-1 inline-flex justify-center items-center px-6 py-3 border border-gray-300 rounded-xl bg-white">Cetak</button>
+                        <button type="reset" id="btn-reset" class="w-full sm:w-auto inline-flex justify-center items-center px-6 py-3 border border-gray-300 rounded-xl bg-white">Reset</button>
+                    </div>
+                </form>
+            </div>
+
+            <div id="surat-container" class="bg-white p-8 rounded-xl shadow-lg transition-shadow duration-500">
+                <div id="surat-preview" class="prose prose-sm sm:prose-base max-w-none text-sm leading-relaxed prose-custom">
+                    <p class="text-gray-400 text-center"><i>Sila isi borang di sebelah kiri dan pratonton akan dikemas kini secara langsung.</i></p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-12 text-sm text-gray-500">
+            <p>Dibuat semula untuk memenuhi keperluan anda.</p>
+        </footer>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // templates + translations (both MS and EN). EN templates mirror MS structure.
+    const translations = {
+        ms: {
+            siteTitle: 'Generator Surat',
+            tagline: 'Hasilkan surat rasmi dengan mudah.',
+            templateHeading: 'Pilih Templat Surat Rasmi',
+            signatureLabel: 'Tandatangan',
+            generateBtn: 'Jana Surat',
+            printBtn: 'Cetak',
+            resetBtn: 'Reset',
+            officialClosing: 'Yang benar,',
+            letterGreeting: 'Tuan/Puan,',
+            templates: [
+                {
+                    title: 'Surat Tidak Hadir Sekolah (Rasmi)',
+                    description: 'Maklumkan ketidakhadiran anak dengan alasan ringkas dan tindakan susulan.',
+                    subject: 'TIDAK HADIR SESI PERSEKOLAHAN',
+                    header: {
+                        sender: [
+                            '[NAMA PENGIRIM]',
+                            '[ALAMAT PENGIRIM]',
+                            '[POSKOD PENGIRIM], [BANDAR PENGIRIM]',
+                            '[NEGERI PENGIRIM]'
+                        ],
+                        recipient: [
+                            '[NAMA GURU]',
+                            '[NAMA SEKOLAH]',
+                            '[ALAMAT SEKOLAH]',
+                            '[POSKOD SEKOLAH], [BANDAR SEKOLAH]',
+                            '[NEGERI SEKOLAH]'
+                        ]
+                    },
+                    content:
+`Tuan/Puan,
+TIDAK HADIR SESI PERSEKOLAHAN PADA [TARIKH]
+
+Dengan segala hormatnya, saya, [HUBUNGAN] kepada [NAMA PELAJAR] dari kelas [KELAS], ingin memaklumkan bahawa anak jagaan saya tidak dapat hadir ke sekolah pada [TARIKH].
+
+2. Anak saya tidak dapat hadir ke sekolah kerana [SEBAB]. Saya mencadangkan anak saya berehat dan mengikuti rawatan yang diperlukan.
+
+Kerjasama pihak tuan/puan amatlah saya hargai.
+
+Sekian, terima kasih.`
+                },
+                {
+                    title: 'Surat Perletakan Jawatan (Rasmi)',
+                    description: 'Notis ringkas perletakan jawatan serta tarikh berkuatkuasa dan penghargaan ringkas.',
+                    subject: 'NOTIS PERLETAKAN JAWATAN',
+                    header: {
+                        sender: [
+                            '[NAMA PEKERJA]',
+                            '[JAWATAN PEKERJA]',
+                            '[JABATAN PEKERJA]',
+                            '[ALAMAT PEKERJA]',
+                            '[POSKOD PENGIRIM], [BANDAR PENGIRIM]',
+                            '[NEGERI PENGIRIM]'
+                        ],
+                        recipient: [
+                            '[NAMA PENERIMA]',
+                            '[JAWATAN PENERIMA]',
+                            '[NAMA SYARIKAT]',
+                            '[ALAMAT SYARIKAT]',
+                            '[POSKOD PENERIMA], [BANDAR PENERIMA]',
+                            '[NEGERI PENERIMA]'
+                        ]
+                    },
+                    content:
+`Tuan/Puan,
+NOTIS PERLETAKAN JAWATAN
+
+Merujuk kepada perkara di atas, saya, [NAMA PEKERJA], [JAWATAN PEKERJA] dari [JABATAN PEKERJA] dengan hormatnya ingin memaklumkan perletakan jawatan saya dari [NAMA SYARIKAT]. Tarikh akhir perkhidmatan saya adalah pada [TARIKH].
+
+2. Saya ingin memaklumkan bahawa saya telah membuat keputusan untuk meletak jawatan dari jawatan sekarang.
+
+Kerjasama dan perhatian pihak tuan/puan dalam perkara ini amatlah saya hargai.
+
+Sekian, terima kasih.`
+                }
+            ]
+        },
+        en: {
+            siteTitle: 'Letter Generator',
+            tagline: 'Easily generate official letters.',
+            templateHeading: 'Choose Official Letter Template',
+            signatureLabel: 'Signature',
+            generateBtn: 'Generate Letter',
+            printBtn: 'Print',
+            resetBtn: 'Reset',
+            officialClosing: 'Yours sincerely,',
+            letterGreeting: 'Dear Sir/Madam,',
+            templates: [
+                {
+                    title: 'School Absence Letter (Official)',
+                    description: 'Notify the school of a child\'s absence with reason and follow-up.',
+                    subject: 'NOTICE OF STUDENT ABSENCE',
+                    header: {
+                        sender: [
+                            '[SENDER NAME]',
+                            '[SENDER ADDRESS]',
+                            '[SENDER POSTCODE], [SENDER CITY]',
+                            '[SENDER STATE]'
+                        ],
+                        recipient: [
+                            '[TEACHER NAME]',
+                            '[SCHOOL NAME]',
+                            '[SCHOOL ADDRESS]',
+                            '[SCHOOL POSTCODE], [SCHOOL CITY]',
+                            '[SCHOOL STATE]'
+                        ]
+                    },
+                    content:
+`Dear Sir/Madam,
+STUDENT ABSENCE ON [DATE]
+
+With reference to the above, I wish to inform you that my child, [CHILD NAME] (class [CLASS]), was unable to attend school on [DATE] due to [REASON].
+
+2. My child requires rest and appropriate care.
+
+Thank you for your cooperation.`
+                },
+                {
+                    title: 'Resignation Letter (Official)',
+                    description: 'Short resignation notice stating effective date and brief thanks.',
+                    subject: 'RESIGNATION NOTICE',
+                    header: {
+                        sender: [
+                            '[EMPLOYEE NAME]',
+                            '[EMPLOYEE POSITION]',
+                            '[EMPLOYEE DEPARTMENT]',
+                            '[EMPLOYEE ADDRESS]',
+                            '[SENDER POSTCODE], [SENDER CITY]',
+                            '[SENDER STATE]'
+                        ],
+                        recipient: [
+                            '[RECIPIENT NAME]',
+                            '[RECIPIENT POSITION]',
+                            '[COMPANY NAME]',
+                            '[COMPANY ADDRESS]',
+                            '[RECIPIENT POSTCODE], [RECIPIENT CITY]',
+                            '[RECIPIENT STATE]'
+                        ]
+                    },
+                    content:
+`Dear Sir/Madam,
+RESIGNATION NOTICE
+
+Please accept this letter as notice of my resignation from my position as [YOUR POSITION] at [COMPANY NAME]. My last day of service will be [DATE].
+
+2. I have decided to resign from my current position.
+
+Thank you for your cooperation.`
+                }
+            ]
+        }
+    };
+
+    // state
+    let currentLang = 'ms';
+    let signatureMode = 'teks';
+    let signatureImage = null;
+    let currentTemplate = null;
+
+    // DOM refs
+    const templateList = document.getElementById('template-list');
+    const currentLangSpan = document.getElementById('current-lang');
+
+    const namaPengirim = document.getElementById('nama-pengirim');
+    const alamatPengirim = document.getElementById('alamat-pengirim');
+    const namaPenerima = document.getElementById('nama-penerima');
+    const alamatPenerima = document.getElementById('alamat-penerima');
+    const tarikhInput = document.getElementById('tarikh'); // header date (always used in header)
+    const tajukInput = document.getElementById('tajuk');
+    const isiSurat = document.getElementById('isi-surat');
+
+    const absenceDateControls = document.getElementById('absence-date-controls');
+    const absenceSingle = document.getElementById('absence-single');
+    const absenceRange = document.getElementById('absence-range');
+    const tarikhAbsSingle = document.getElementById('tarikh-absence-single');
+    const tarikhAbsStart = document.getElementById('tarikh-absence-start');
+    const tarikhAbsEnd = document.getElementById('tarikh-absence-end');
+    const resignDateControls = document.getElementById('resign-date-controls');
+    const tarikhAkhirResign = document.getElementById('tarikh-akhir-resign');
+
+    const placeholdersArea = document.getElementById('placeholders-area');
+    const placeholdersList = document.getElementById('placeholders-list');
+
+    const btnTeksSign = document.getElementById('btn-teks-sign');
+    const btnLukisSign = document.getElementById('btn-lukis-sign');
+    const teksSignContent = document.getElementById('teks-sign-content');
+    const lukisSignContent = document.getElementById('lukis-sign-content');
+    const tandatanganTeks = document.getElementById('tandatangan-teks');
+    const canvas = document.getElementById('signature-canvas');
+    const clearCanvasBtn = document.getElementById('clear-canvas-btn');
+    const exportCanvasBtn = document.getElementById('export-canvas-btn');
+
+    const previewArea = document.getElementById('surat-preview');
+
+    const btnJana = document.getElementById('btn-jana');
+    const btnCetak = document.getElementById('btn-cetak');
+    const btnReset = document.getElementById('btn-reset');
+    const langToggle = document.getElementById('lang-toggle');
+
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+
+    /* ---------- Helpers ---------- */
+
+    function applyLangTexts() {
+        const t = translations[currentLang];
+        document.getElementById('site-title').textContent = t.siteTitle;
+        document.getElementById('tagline').textContent = t.tagline;
+        document.getElementById('template-heading').textContent = t.templateHeading;
+        document.getElementById('label-signature').textContent = t.signatureLabel;
+        btnJana.textContent = t.generateBtn;
+        btnCetak.textContent = t.printBtn;
+        btnReset.textContent = t.resetBtn;
+        currentLangSpan.textContent = currentLang.toUpperCase();
+    }
+
+    function loadTemplates() {
+        templateList.innerHTML = '';
+        const list = translations[currentLang].templates;
+        list.forEach((tmp, idx) => {
+            const card = document.createElement('div');
+            card.className = 'border border-gray-200 p-4 rounded-xl hover:shadow-lg cursor-pointer bg-white';
+            card.innerHTML = `<h3 class="font-bold text-md text-sky-700">${tmp.title}</h3>
+                              <p class="text-sm text-gray-500 mt-1">${tmp.description}</p>`;
+            card.addEventListener('click', () => {
+                currentTemplate = tmp;
+                tajukInput.value = tmp.subject || '';
+                isiSurat.value = tmp.content || '';
+                handleTemplateSpecificControls();
+                updatePlaceholders();
+                generateLetter();
+                namaPengirim.focus();
+            });
+            templateList.appendChild(card);
+        });
+    }
+
+    function handleTemplateSpecificControls() {
+        absenceDateControls.classList.add('hidden');
+        resignDateControls.classList.add('hidden');
+
+        if (!currentTemplate) return;
+        const title = (currentTemplate.title || '').toLowerCase();
+        if (title.includes('tidak hadir') || title.includes('absence')) {
+            absenceDateControls.classList.remove('hidden');
+            document.querySelector('input[name="absence-date-mode"][value="single"]').checked = true;
+            absenceSingle.classList.remove('hidden');
+            absenceRange.classList.add('hidden');
+        } else if (title.includes('perletakan') || title.includes('resign') || title.includes('perletakan jawatan')) {
+            resignDateControls.classList.remove('hidden');
+        }
+    }
+
+    function extractPlaceholdersFromText(text) {
+        const rx = /\[([^\]]+)\]/g;
+        const found = new Set();
+        let m;
+        while ((m = rx.exec(text)) !== null) {
+            found.add(m[0]);
+        }
+        return Array.from(found);
+    }
+
+    function updatePlaceholders() {
+        const text = isiSurat.value || '';
+        const bodyPlaceholders = extractPlaceholdersFromText(text);
+        const headerPlaceholders = [];
+        if (currentTemplate && currentTemplate.header) {
+            const { sender = [], recipient = [] } = currentTemplate.header;
+            [...sender, ...recipient].forEach(line => {
+                extractPlaceholdersFromText(line).forEach(ph => headerPlaceholders.push(ph));
+            });
+        }
+        const merged = Array.from(new Set([...bodyPlaceholders, ...headerPlaceholders]));
+        if (merged.length === 0) {
+            placeholdersArea.classList.add('hidden');
+            placeholdersList.innerHTML = '';
+            return;
+        }
+        placeholdersArea.classList.remove('hidden');
+        placeholdersList.innerHTML = '';
+        merged.forEach(ph => {
+            const clean = ph.replace(/^\[|\]$/g, '');
+            const id = 'ph-' + clean.replace(/\s+/g, '-').toLowerCase();
+            const wrapper = document.createElement('div');
+            wrapper.className = 'flex gap-2';
+            wrapper.innerHTML = `
+                <label class="flex-1">
+                    <div class="text-xs text-gray-600">${clean}</div>
+                    <input data-placeholder="${ph}" id="${id}" class="mt-1 block w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg sm:text-sm" placeholder="Masukkan nilai untuk ${clean}">
+                </label>
+            `;
+            placeholdersList.appendChild(wrapper);
+        });
+        placeholdersList.querySelectorAll('input').forEach(inp => inp.addEventListener('input', generateLetter));
+    }
+
+    function escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function escapeHtml(text) {
+        return String(text).replace(/[&<>"']/g, function(m){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]; });
+    }
+
+    // get placeholder value (body placeholders)
+    function getPlaceholderValue(ph) {
+        const clean = ph.replace(/^\[|\]$/g, '').toLowerCase();
+        const id = 'ph-' + clean.replace(/\s+/g, '-').toLowerCase();
+        const input = document.getElementById(id);
+        if (input && input.value.trim() !== '') return input.value.trim();
+
+        if (clean.includes('nama') && (clean.includes('pengirim') || clean.includes('sender') || clean.includes('anda') || clean.includes('you') )) return namaPengirim.value || '';
+        if (clean.includes('alamat') && (clean.includes('pengirim') || clean.includes('sender') )) return alamatPengirim.value || '';
+        if (clean.includes('nama') && (clean.includes('guru') || clean.includes('penerima') || clean.includes('sekolah') )) return namaPenerima.value || '';
+        if (clean.includes('alamat') && (clean.includes('sekolah') || clean.includes('penerima') || clean.includes('syarikat') )) return alamatPenerima.value || '';
+
+        // IMPORTANT: [TARIKH] in the body uses template-specific date (absence/resign)
+        if (clean === 'tarikh' || clean === 'date') {
+            return computeBodyDateText();
+        }
+
+        if (clean === 'tarikh_mula' || clean === 'tarikh-mula' || clean === 'tarikh mula') {
+            return formatDateForDisplay(tarikhAbsStart.value) || '';
+        }
+        if (clean === 'tarikh_akhir' || clean === 'tarikh-akhir' || clean === 'tarikh akhir') {
+            return formatDateForDisplay(tarikhAbsEnd.value || tarikhAkhirResign.value) || '';
+        }
+
+        return '';
+    }
+
+    // Header date ALWAYS uses the header date input (#tarikh)
+    function computeHeaderDateText() {
+        return formatDateForDisplay(tarikhInput.value) || '';
+    }
+
+    // Body date uses template-specific selection (absence or resign), or falls back to header date
+    function computeBodyDateText() {
+        if (!currentTemplate) return formatDateForDisplay(tarikhInput.value) || '';
+        const title = (currentTemplate.title || '').toLowerCase();
+        if (title.includes('tidak hadir') || title.includes('absence')) {
+            const mode = document.querySelector('input[name="absence-date-mode"]:checked')?.value || 'single';
+            if (mode === 'single') {
+                return formatDateForDisplay(tarikhAbsSingle.value) || '';
+            } else {
+                const s = tarikhAbsStart.value, e = tarikhAbsEnd.value;
+                if (s && e) {
+                    const sF = formatDateForDisplay(s);
+                    const eF = formatDateForDisplay(e);
+                    return sF && eF ? `${sF} hingga ${eF}` : (sF || eF || '');
+                }
+                return '';
+            }
+        } else if (title.includes('perletakan') || title.includes('resign') || title.includes('perletakan jawatan')) {
+            return formatDateForDisplay(tarikhAkhirResign.value) || '';
+        } else {
+            return formatDateForDisplay(tarikhInput.value) || '';
+        }
+    }
+
+    function replacePlaceholdersInText(text) {
+        if (!text) return '';
+        const placeholders = extractPlaceholdersFromText(text);
+        let result = text;
+        placeholders.forEach(ph => {
+            const val = getPlaceholderValue(ph) || ph;
+            const re = new RegExp(escapeRegExp(ph), 'g');
+            result = result.replace(re, escapeHtml(val));
+        });
+        return result;
+    }
+
+    function formatDateForDisplay(isoDate) {
+        if (!isoDate) return '';
+        const d = new Date(isoDate + 'T00:00:00');
+        const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+        const locale = currentLang === 'ms' ? 'ms-MY' : 'en-GB';
+        return d.toLocaleDateString(locale, opts);
+    }
+
+    /* ---------- Canvas (signature) ---------- */
+
+    function resizeCanvas() {
+        const ratio = window.devicePixelRatio || 1;
+        const width = canvas.clientWidth || canvas.offsetWidth || 400;
+        const height = canvas.clientHeight || canvas.offsetHeight || 200;
+        canvas.width = Math.floor(width * ratio);
+        canvas.height = Math.floor(height * ratio);
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#000';
+        if (signatureMode === 'lukis') drawGuideline();
+    }
+
+    function drawGuideline() {
+        ctx.save();
+        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = '#9ca3af';
+        const y = canvas.clientHeight * 0.75 / (window.devicePixelRatio || 1);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.clientWidth, y);
+        ctx.stroke();
+        ctx.restore();
+        ctx.strokeStyle = '#000';
+    }
+
+    function getPointerPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        return { x: clientX - rect.left, y: clientY - rect.top };
+    }
+
+    function startDraw(e) {
+        e.preventDefault();
+        isDrawing = true;
+        const pos = getPointerPos(e);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+    }
+    function doDraw(e) {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const pos = getPointerPos(e);
+        ctx.lineTo(pos.x, pos.y);
+        ctx.stroke();
+    }
+    function endDraw(e) {
+        if (!isDrawing) return;
+        isDrawing = false;
+        ctx.closePath();
+        signatureImage = canvas.toDataURL();
+        generateLetter();
+    }
+
+    /* ---------- Header & letter generation ---------- */
+
+    function generateHeaderHtml(template) {
+        if (!template || !template.header) return '';
+        const senderLines = template.header.sender || [];
+        const recipientLines = template.header.recipient || [];
+
+        const senderHtmlLines = senderLines.map(line => replacePlaceholdersInText(line)).filter(Boolean);
+        const recipientHtmlLines = recipientLines.map(line => replacePlaceholdersInText(line)).filter(Boolean);
+
+        const senderHtml = `<p>${senderHtmlLines.join('<br>')}</p>`;
+
+        // recipient: all except last line stacked above; last recipient line shown left, with HEADER DATE (tarikhInput) on right
+        const lastRecipient = recipientHtmlLines.length ? recipientHtmlLines[recipientHtmlLines.length - 1] : '';
+        const otherRecipients = recipientHtmlLines.slice(0, -1).join('<br>');
+        const headerDateText = escapeHtml(computeHeaderDateText());
+
+        const recipientHtml = `
+            <div>
+                ${otherRecipients ? `<div>${otherRecipients}</div>` : ''}
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                    <div>${escapeHtml(lastRecipient)}</div>
+                    <div style="text-align:right;">${headerDateText}</div>
+                </div>
+            </div>
+        `;
+
+        const headerHtml = `
+            <div style="display:block;">
+                <div style="text-align:left; margin-bottom:6px;">${senderHtml}</div>
+                <hr style="border-top:1px solid #ccc; margin:12px 0;">
+                <div style="text-align:left; margin-top:6px;">${recipientHtml}</div>
+            </div>
+            <br>
+        `;
+        return headerHtml;
+    }
+
+    function generateLetter() {
+        const t = translations[currentLang];
+        let isiRaw = isiSurat.value || (currentTemplate ? currentTemplate.content : '');
+
+        const headerHtml = currentTemplate && currentTemplate.header ? generateHeaderHtml(currentTemplate) : '';
+
+        const bodyHtml = replacePlaceholdersInText(isiRaw).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+
+        // signature block
+        let signatureBlock = '';
+        const dataNama = namaPengirim.value || '';
+        if (signatureMode === 'teks') {
+            const sigText = tandatanganTeks.value.trim();
+            signatureBlock += `<p>${t.officialClosing}</p>`;
+            if (sigText) {
+                signatureBlock += `<p class="signature-font" style="font-size:36px;margin-top:6px">${escapeHtml(sigText)}</p>`;
+            } else {
+                signatureBlock += `<div style="height:56px;"></div>`;
+            }
+            signatureBlock += `<p style="margin-top:12px;">(${escapeHtml(dataNama)})</p>`;
+        } else {
+            signatureBlock += `<p>${t.officialClosing}</p>`;
+            if (signatureImage) {
+                signatureBlock += `<img src="${signatureImage}" alt="Tandatangan" style="width:180px;height:auto;margin-top:6px"/><br>`;
+            } else {
+                signatureBlock += `<div style="height:56px;"></div>`;
+            }
+            signatureBlock += `<p style="margin-top:12px;">(${escapeHtml(dataNama)})</p>`;
+        }
+
+        // fallback header if no template
+        let fallbackHeader = '';
+        if (!headerHtml) {
+            const fallbackSender = `<p><strong>${escapeHtml(namaPengirim.value || '')}</strong><br>${(alamatPengirim.value || '').replace(/\n/g, '<br>')}</p>`;
+            const fallbackRecipient = `<div style="display:flex; justify-content:space-between; align-items:center;"><div>${escapeHtml(namaPenerima.value || '')}<br>${(alamatPenerima.value || '').replace(/\n/g, '<br>')}</div><div style="text-align:right;">${escapeHtml(formatDateForDisplay(tarikhInput.value) || '')}</div></div>`;
+            fallbackHeader = `${fallbackSender}<hr style="border-top:1px solid #ccc; margin:12px 0;">${fallbackRecipient}<br>`;
+        }
+
+        // avoid duplicate salutations: templates already include greeting lines; only add generic if body doesn't start with greeting
+        let greetingHtml = '';
+        const bodyTrim = isiRaw.trim();
+        if (!/^(tuan\/puan,|dear sir|tuan puan)/i.test(bodyTrim)) {
+            greetingHtml = `<p>${t.letterGreeting}</p>`;
+        }
+
+        const subjectText = tajukInput.value ? tajukInput.value.toUpperCase() : (currentTemplate ? (currentTemplate.subject || '') : '');
+
+        const html = `
+            <div style="font-family: 'Inter', Arial, sans-serif; color: #111;">
+                ${headerHtml || fallbackHeader}
+                ${greetingHtml}
+                <p><strong>${(t.subjectLabel || 'SUBJECT').toUpperCase()}: ${escapeHtml(subjectText)}</strong></p>
+                <br>
+                <p>${bodyHtml}</p>
+                <br>
+                ${signatureBlock}
+            </div>
+        `;
+        previewArea.innerHTML = html;
+    }
+
+    /* ---------- Bindings / realtime ---------- */
+
+    function init() {
+        applyLangTexts();
+        loadTemplates();
+        setTodaysDateISO();
+
+        setTimeout(() => {
+            const style = getComputedStyle(canvas);
+            if (!style.width || parseFloat(style.width) === 0) canvas.style.width = '100%';
+            if (!style.height || parseFloat(style.height) === 0) canvas.style.height = '200px';
+            resizeCanvas();
+        }, 50);
+
+        // realtime listeners
+        [namaPengirim, alamatPengirim, namaPenerima, alamatPenerima, tarikhInput, tajukInput, isiSurat, tandatanganTeks, tarikhAbsSingle, tarikhAbsStart, tarikhAbsEnd, tarikhAkhirResign].forEach(el => {
+            if (!el) return;
+            el.addEventListener('input', () => {
+                updatePlaceholders();
+                generateLetter();
+            });
+        });
+
+        document.querySelectorAll('input[name="absence-date-mode"]').forEach(r => {
+            r.addEventListener('change', (e) => {
+                if (e.target.value === 'single') {
+                    absenceSingle.classList.remove('hidden');
+                    absenceRange.classList.add('hidden');
+                } else {
+                    absenceSingle.classList.add('hidden');
+                    absenceRange.classList.remove('hidden');
+                }
+                generateLetter();
+            });
+        });
+
+        btnTeksSign.addEventListener('click', () => {
+            signatureMode = 'teks';
+            teksSignContent.classList.remove('hidden');
+            lukisSignContent.classList.add('hidden');
+            generateLetter();
+        });
+        btnLukisSign.addEventListener('click', () => {
+            signatureMode = 'lukis';
+            teksSignContent.classList.add('hidden');
+            lukisSignContent.classList.remove('hidden');
+            resizeCanvas();
+        });
+
+        // canvas events
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', doDraw);
+        canvas.addEventListener('mouseup', endDraw);
+        canvas.addEventListener('mouseout', endDraw);
+        canvas.addEventListener('touchstart', startDraw, {passive:false});
+        canvas.addEventListener('touchmove', doDraw, {passive:false});
+        canvas.addEventListener('touchend', endDraw);
+
+        clearCanvasBtn.addEventListener('click', () => {
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            signatureImage = null;
+            if (signatureMode === 'lukis') drawGuideline();
+            generateLetter();
+        });
+        exportCanvasBtn.addEventListener('click', () => {
+            signatureImage = canvas.toDataURL();
+            generateLetter();
+        });
+
+        btnJana.addEventListener('click', generateLetter);
+        btnCetak.addEventListener('click', () => {
+            generateLetter();
+            window.print();
+        });
+        btnReset.addEventListener('click', () => {
+            setTimeout(() => {
+                document.getElementById('surat-form').reset();
+                signatureImage = null;
+                signatureMode = 'teks';
+                teksSignContent.classList.remove('hidden');
+                lukisSignContent.classList.add('hidden');
+                placeholdersList.innerHTML = '';
+                placeholdersArea.classList.add('hidden');
+                currentTemplate = null;
+                absenceDateControls.classList.add('hidden');
+                resignDateControls.classList.add('hidden');
+                setTodaysDateISO();
+                generateLetter();
+            }, 0);
+        });
+
+        langToggle.addEventListener('click', () => {
+            currentLang = currentLang === 'ms' ? 'en' : 'ms';
+            applyLangTexts();
+            loadTemplates();
+            updatePlaceholders();
+            generateLetter();
+        });
+
+        generateLetter();
+    }
+
+    function setTodaysDateISO() {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2,'0');
+        const dd = String(today.getDate()).padStart(2,'0');
+        tarikhInput.value = `${yyyy}-${mm}-${dd}`;
+        tarikhAbsSingle.value = tarikhInput.value;
+        tarikhAbsStart.value = tarikhInput.value;
+        tarikhAbsEnd.value = tarikhInput.value;
+        tarikhAkhirResign.value = tarikhInput.value;
+    }
+
+    window.addEventListener('resize', () => {
+        resizeCanvas();
+    });
+
+    init();
+});
+</script>
+</body>
+</html>
