@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Penjana Surat Rasmi — Setara surat.farhad.my</title>
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Poppins:wght@600&display=swap" rel="stylesheet">
+  <meta name="description" content="Penjana surat rasmi BM/EN dengan pratinjau langsung, salin, PDF, cetak, autosave dan pautan kongsi." />
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="bg-gradient"></div>
+
+  <header class="site-header container animate-in">
+    <div class="brand">
+      <div class="logo">📄</div>
+      <div>
+        <h1>Penjana Surat Rasmi</h1>
+        <p class="subtitle">Pilih templat, isi butiran, dan jana surat rasmi serta-merta.</p>
+      </div>
+    </div>
+    <div class="toolbar">
+      <label class="chip">
+        <span class="chip-label">Bahasa</span>
+        <select id="lang">
+          <option value="my" selected>BM</option>
+          <option value="en">EN</option>
+        </select>
+      </label>
+      <button id="btnShare" class="btn ghost">🔗 Pautan</button>
+      <button id="btnReset" class="btn ghost">♻️ Reset</button>
+    </div>
+  </header>
+
+  <main class="container grid animate-in">
+    <section class="card">
+      <h2>Tetapan & borang</h2>
+
+      <label class="field">
+        <span class="label">Jenis surat</span>
+        <select id="jenisSurat"></select>
+      </label>
+
+      <div class="split">
+        <label class="field">
+          <span class="label">Tarikh surat</span>
+          <input id="tarikh" type="date" />
+        </label>
+        <label class="field">
+          <span class="label">No. telefon</span>
+          <input id="telefon" type="text" placeholder="012-3456789" />
+        </label>
+      </div>
+
+      <h3 class="section-title">Butiran pengirim</h3>
+      <label class="field">
+        <span class="label">Nama pengirim</span>
+        <input id="namaPengirim" type="text" placeholder="Nama penuh" />
+      </label>
+      <label class="field">
+        <span class="label">Alamat pengirim</span>
+        <input id="alamatPengirim" type="text" placeholder="Alamat baris 1" />
+      </label>
+      <div class="split">
+        <label class="field">
+          <span class="label">Poskod & bandar</span>
+          <input id="poskodBandarPengirim" type="text" placeholder="12345, Kota Bharu" />
+        </label>
+        <label class="field">
+          <span class="label">Negeri</span>
+          <input id="negeriPengirim" type="text" placeholder="Kelantan" />
+        </label>
+      </div>
+
+      <div id="konteksSekolah" class="konteks">
+        <h3 class="section-title">Butiran sekolah</h3>
+        <label class="field">
+          <span class="label">Nama pelajar</span>
+          <input id="namaPelajar" type="text" placeholder="Nama pelajar" />
+        </label>
+        <div class="split">
+          <label class="field">
+            <span class="label">Kelas</span>
+            <input id="kelas" type="text" placeholder="5 Al-Biruni" />
+          </label>
+          <label class="field">
+            <span class="label">Hubungan</span>
+            <input id="hubungan" type="text" placeholder="Ibu/Bapa/Penjaga" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">Nama sekolah</span>
+          <input id="namaSekolah" type="text" placeholder="SMK..." />
+        </label>
+        <label class="field">
+          <span class="label">Alamat sekolah</span>
+          <input id="alamatSekolah" type="text" placeholder="Alamat baris 1" />
+        </label>
+        <div class="split">
+          <label class="field">
+            <span class="label">Poskod & bandar sekolah</span>
+            <input id="poskodBandarSekolah" type="text" placeholder="12345, Kota Bharu" />
+          </label>
+          <label class="field">
+            <span class="label">Negeri sekolah</span>
+            <input id="negeriSekolah" type="text" placeholder="Kelantan" />
+          </label>
+        </div>
+      </div>
+
+      <div id="konteksKerja" class="konteks hidden">
+        <h3 class="section-title">Butiran tempat kerja</h3>
+        <div class="split">
+          <label class="field">
+            <span class="label">Jawatan pengirim</span>
+            <input id="jawatan" type="text" placeholder="Executive / Teacher / etc." />
+          </label>
+          <label class="field">
+            <span class="label">Nama majikan/unit</span>
+            <input id="majikan" type="text" placeholder="Nama syarikat / unit" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">Alamat majikan</span>
+          <input id="alamatMajikan" type="text" placeholder="Alamat baris 1" />
+        </label>
+        <div class="split">
+          <label class="field">
+            <span class="label">Poskod & bandar majikan</span>
+            <input id="poskodBandarMajikan" type="text" placeholder="50000, Kuala Lumpur" />
+          </label>
+          <label class="field">
+            <span class="label">Negeri majikan</span>
+            <input id="negeriMajikan" type="text" placeholder="Wilayah Persekutuan" />
+          </label>
+        </div>
+        <label class="field">
+          <span class="label">Jawatan penerima</span>
+          <input id="penerimaJawatan" type="text" placeholder="Pengurus Sumber Manusia" />
+        </label>
+      </div>
+
+      <h3 class="section-title">Butiran surat</h3>
+      <label class="field">
+        <span class="label">Tajuk (opsyenal)</span>
+        <input id="tajukKustom" type="text" placeholder="Permohonan Cuti / Tidak Hadir / ..." />
+      </label>
+      <label class="field">
+        <span class="label">Sebab ringkas</span>
+        <input id="sebab" type="text" placeholder="Demam, urusan keluarga, temujanji, dsb." />
+      </label>
+      <div class="split">
+        <label class="field">
+          <span class="label">Tarikh mula</span>
+          <input id="tarikhMula" type="date" />
+        </label>
+        <label class="field">
+          <span class="label">Tarikh akhir</span>
+          <input id="tarikhAkhir" type="date" />
+        </label>
+      </div>
+
+      <div id="perengganContainer">
+        <label class="field">
+          <span class="label">Perenggan tambahan</span>
+          <textarea name="perenggan[]" rows="3" placeholder="Perincian tambahan (opsyenal)"></textarea>
+        </label>
+      </div>
+      <button type="button" id="btnTambahPerenggan" class="btn ghost">+ Tambah Perenggan</button>
+
+      <div class="actions">
+        <button id="btnSalin" class="btn">📋 Salin</button>
+        <button id="btnPDF" class="btn primary">⬇️ PDF</button>
+        <button id="btnPrint" class="btn">🖨️ Cetak</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Pratinjau surat</h2>
+      <div id="preview" class="surat skeleton"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <small>Format rasmi BM & EN • Auto-simpan • Pautan kongsi • PDF & Cetak</small>
+    </div>
+  </footer>
+
+  <div id="toast"></div>
+</body>
+</html>
